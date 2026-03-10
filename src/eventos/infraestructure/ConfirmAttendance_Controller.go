@@ -41,7 +41,6 @@ func (controller *ConfirmAttendanceController) Execute(c *gin.Context) {
 		return
 	}
 
-	// Validar que el estado sea válido
 	validStates := map[string]bool{
 		"asistira":    true,
 		"quiza":       true,
@@ -59,6 +58,13 @@ func (controller *ConfirmAttendanceController) Execute(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al confirmar asistencia", "detalles": err.Error()})
 		return
 	}
+
+	// Notificar por WebSocket: alguien confirmó asistencia al evento
+	GetHub().BroadcastEvent("attendance", int32(eventoId), gin.H{
+		"evento_id": eventoId,
+		"user_id":   body.UserID,
+		"estado":    body.Estado,
+	})
 
 	c.JSON(http.StatusOK, gin.H{"message": "Asistencia confirmada correctamente"})
 }

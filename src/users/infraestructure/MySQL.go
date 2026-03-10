@@ -1,6 +1,7 @@
 package infraestructure
 
 import (
+	"database/sql"
 	"Plannex/src/config"
 	"Plannex/src/users/domain"
 	"fmt"
@@ -22,7 +23,7 @@ func NewMySQL() domain.IUser {
 }
 
 func (mysql *MySQL) SaveUser(userName string, email string, password string) error {
-	query := "INSERT INTO users (user_name, email, password) VALUES (?, ?, ?)"
+	query := "INSERT INTO users (user_name, email, password, role) VALUES (?, ?, ?, 'guest')"
 	result, err := mysql.conn.ExecutePreparedQuery(query, userName, email, password)
 	if err != nil {
 		return fmt.Errorf("error al ejecutar la consulta: %v", err)
@@ -37,7 +38,7 @@ func (mysql *MySQL) SaveUser(userName string, email string, password string) err
 }
 
 func (mysql *MySQL) GetAll() ([]domain.User, error) {
-	query := "SELECT id, user_name, email, password FROM users"
+	query := "SELECT id, user_name, email, password, auth_token, role, profile_image_path FROM users"
 	rows, err := mysql.conn.FetchRows(query)
 	if err != nil {
 		return nil, fmt.Errorf("Error al ejecutar la consulta SELECT: %v", err)
@@ -48,8 +49,15 @@ func (mysql *MySQL) GetAll() ([]domain.User, error) {
 
 	for rows.Next() {
 		var user domain.User
-		if err := rows.Scan(&user.ID, &user.UserName, &user.Email, &user.Password); err != nil {
+		var authToken, profilePath sql.NullString
+		if err := rows.Scan(&user.ID, &user.UserName, &user.Email, &user.Password, &authToken, &user.Role, &profilePath); err != nil {
 			return nil, fmt.Errorf("Error al escanear la fila: %v", err)
+		}
+		if authToken.Valid {
+			user.AuthToken = authToken.String
+		}
+		if profilePath.Valid {
+			user.ProfileImagePath = profilePath.String
 		}
 		users = append(users, user)
 	}
@@ -76,8 +84,14 @@ func (mysql *MySQL) UpdateUser(id int32, userName string, email string, password
 	return nil
 }
 
+func (mysql *MySQL) UpdateUserAuthToken(id int32, authToken string) error {
+	query := "UPDATE users SET auth_token = ? WHERE id = ?"
+	_, err := mysql.conn.ExecutePreparedQuery(query, authToken, id)
+	return err
+}
+
 func (mysql *MySQL) DeleteUser(id int32) error {
-	query := "DELETE FROM user WHERE id = ?"
+	query := "DELETE FROM users WHERE id = ?"
 	result, err := mysql.conn.ExecutePreparedQuery(query, id)
 	if err != nil {
 		return fmt.Errorf("Error al ejecutar la consulta: %v", err)
@@ -93,19 +107,47 @@ func (mysql *MySQL) DeleteUser(id int32) error {
 }
 
 func (mysql *MySQL) GetUserByCredentials(userName string) (*domain.User, error) {
-	query := "SELECT id, user_name, email, password FROM users WHERE user_name = ?"
+	query := "SELECT id, user_name, email, password, auth_token, role, profile_image_path FROM users WHERE user_name = ?"
 	row, err := mysql.conn.FetchRow(query, userName)
 	if err != nil {
 		return nil, fmt.Errorf("error al ejecutar la consulta: %v", err)
 	}
 
 	var user domain.User
-	err = row.Scan(&user.ID, &user.UserName, &user.Email, &user.Password)
+	var authToken, profilePath sql.NullString
+	err = row.Scan(&user.ID, &user.UserName, &user.Email, &user.Password, &authToken, &user.Role, &profilePath)
 	if err != nil {
 		return nil, fmt.Errorf("usuario no encontrado")
+	}
+	if authToken.Valid {
+		user.AuthToken = authToken.String
+	}
+	if profilePath.Valid {
+		user.ProfileImagePath = profilePath.String
 	}
 
 	return &user, nil
 }
 
-// GetUserByESP32ID removed: ESP32ID not used anymore
+func (mysql *MySQL) GetUserByID(id int32) (*domain.User, error) {
+	query := "SELECT id, user_name, email, password, auth_token, role, profile_image_path FROM users WHERE id = ?"
+	row, err := mysql.conn.FetchRow(query, id)
+	if err != nil {
+		return nil, fmt.Errorf("error al ejecutar la consulta: %v", err)
+	}
+
+	var user domain.User
+	var authToken, profilePath sql.NullString
+	err = row.Scan(&user.ID, &user.UserName, &user.Email, &user.Password, &authToken, &user.Role, &profilePath)
+	if err != nil {
+		return nil, fmt.Errorf("usuario no encontrado")
+	}
+	if authToken.Valid {
+		user.AuthToken = authToken.String
+	}
+	if profilePath.Valid {
+		user.ProfileImagePath = profilePath.String
+	}
+
+	return &user, nil
+}

@@ -12,6 +12,6 @@ func NewEditEventos(db domain.IEventos) *EditEventos {
 	return &EditEventos{db: db}
 }
 
-func (ep *EditEventos) Execute(id int32, nombre string, fecha string) error {
-	return ep.db.UpdateEvento(id, nombre, fecha)
+func (ep *EditEventos) Execute(id int32, title, description, date string, latitude, longitude *float64, qrCodeData string) error {
+	return ep.db.UpdateEvento(id, title, description, date, latitude, longitude, qrCodeData)
 }

@@ -2,6 +2,9 @@ package infraestructure
 
 import (
 	"Plannex/src/users/application"
+	"Plannex/src/users/domain"
+	"crypto/rand"
+	"encoding/hex"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -9,15 +12,24 @@ import (
 
 type LoginUserController struct {
 	useCase *application.LoginUser
+	repo    domain.IUser
 }
 
-func NewLoginUserController(useCase *application.LoginUser) *LoginUserController {
-	return &LoginUserController{useCase: useCase}
+func NewLoginUserController(useCase *application.LoginUser, repo domain.IUser) *LoginUserController {
+	return &LoginUserController{useCase: useCase, repo: repo}
 }
 
 type LoginRequestBody struct {
 	UserName string `json:"userName"`
 	Password string `json:"password"`
+}
+
+func generateAuthToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
 }
 
 func (lc *LoginUserController) Execute(c *gin.Context) {
@@ -31,6 +43,12 @@ func (lc *LoginUserController) Execute(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Credenciales inválidas"})
 		return
+	}
+
+	token, err := generateAuthToken()
+	if err == nil {
+		_ = lc.repo.UpdateUserAuthToken(user.ID, token)
+		user.AuthToken = token
 	}
 
 	// No devolver la contraseña en la respuesta

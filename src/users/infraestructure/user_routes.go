@@ -23,7 +23,7 @@ func SetupRouter(repo domain.IUser) *gin.Engine {
 	deleteUserController := NewDeleteUserController(deleteUserUseCase)
 
 	loginUser := application.NewLoginUser(repo)
-	loginUserController := NewLoginUserController(loginUser)
+	loginUserController := NewLoginUserController(loginUser, repo)
 
 	r.POST("/user", createUserController.Execute)
 	r.GET("/user", viewUserController.Execute)

@@ -24,11 +24,14 @@ func (dp_c *DeleteEventosController) Execute(c *gin.Context) {
 		return
 	}
 
-	err = dp_c.useCase.Execute(int32(id))
+	eventoID := int32(id)
+	err = dp_c.useCase.Execute(eventoID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al eliminar el evento", "detalles": err.Error()})
 		return
 	}
+
+	GetHub().BroadcastEvent("delete", eventoID, gin.H{"id": eventoID})
 
 	c.JSON(http.StatusOK, gin.H{"message": "Evento eliminado correctamente"})
 }

@@ -9,13 +9,13 @@ import (
 
 func SetupRouter(repo domain.IEventos, r *gin.Engine) {
 	createEventos := application.NewCreateEventos(repo)
-	createEventosController := NewCreateEventosController(createEventos)
+	createEventosController := NewCreateEventosController(createEventos, repo)
 
 	viewEventos := application.NewViewEventos(repo)
 	viewEventosController := NewViewEventosController(viewEventos)
 
 	editEventosUseCase := application.NewEditEventos(repo)
-	editEventosController := NewEditEventosController(editEventosUseCase)
+	editEventosController := NewEditEventosController(editEventosUseCase, repo)
 
 	deleteEventosUseCase := application.NewDeleteEventos(repo)
 	deleteEventosController := NewDeleteEventosController(deleteEventosUseCase)
@@ -25,6 +25,9 @@ func SetupRouter(repo domain.IEventos, r *gin.Engine) {
 
 	inviteUserController := NewInviteUserController(repo)
 	confirmAttendanceController := NewConfirmAttendanceController(repo)
+
+	// WebSocket debe ir antes de /eventos/:id para que "ws" no se interprete como id
+	r.GET("/eventos/ws", gin.WrapF(HandleWebSocket(GetHub())))
 
 	r.POST("/eventos", createEventosController.Execute)
 	r.GET("/eventos", viewEventosController.Execute)
