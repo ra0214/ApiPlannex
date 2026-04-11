@@ -43,7 +43,7 @@ func setupUserRoutes(r *gin.Engine, repo domain.IUser, deviceTokenRepo domain.ID
 	r.DELETE("/user/:id", deleteUserController.Execute)
 	r.POST("/login", loginUserController.Execute)
 
-	// Device Token Routes
-	r.POST("/user/:userId/fcm-token", saveDeviceTokenController.Execute)
-	r.DELETE("/user/:userId/fcm-token", deleteDeviceTokenController.Execute)
+	// Device Token Routes (usando /users para evitar conflicto con /user/:id)
+	r.POST("/users/:userId/fcm-token", saveDeviceTokenController.Execute)
+	r.DELETE("/users/:userId/fcm-token", deleteDeviceTokenController.Execute)
 }
