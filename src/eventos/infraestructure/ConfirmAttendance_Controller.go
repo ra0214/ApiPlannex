@@ -66,5 +66,9 @@ func (controller *ConfirmAttendanceController) Execute(c *gin.Context) {
 		"estado":    body.Estado,
 	})
 
+	// Notificar por FCM a otros usuarios del evento
+	// Para obtener todos los usuarios invitados necesitarías consultarlos en la BD
+	// NotifyAttendanceConfirmed(int32(eventoId), body.UserID, body.Estado, usuariosDelEvento)
+
 	c.JSON(http.StatusOK, gin.H{"message": "Asistencia confirmada correctamente"})
 }

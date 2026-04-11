@@ -43,6 +43,8 @@ func (cp_c *CreateEventosController) Execute(c *gin.Context) {
 	evento, err := cp_c.repo.GetEventoById(id)
 	if err == nil {
 		GetHub().BroadcastEvent("create", id, evento)
+		// Notificar por push notification (opcional: notificar a usuarios específicos)
+		// NotifyEventCreated(id, evento.Title, evento.Description, []int32{})
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Evento creado correctamente", "id": id, "evento": evento})

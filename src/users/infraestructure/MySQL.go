@@ -1,9 +1,9 @@
 package infraestructure
 
 import (
-	"database/sql"
 	"Plannex/src/config"
 	"Plannex/src/users/domain"
+	"database/sql"
 	"fmt"
 	"log"
 )
@@ -13,6 +13,12 @@ type MySQL struct {
 }
 
 var _ domain.IUser = (*MySQL)(nil)
+
+type MySQLDeviceToken struct {
+	conn *config.Conn_MySQL
+}
+
+var _ domain.IDeviceToken = (*MySQLDeviceToken)(nil)
 
 func NewMySQL() domain.IUser {
 	conn := config.GetDBPool()
@@ -150,4 +156,94 @@ func (mysql *MySQL) GetUserByID(id int32) (*domain.User, error) {
 	}
 
 	return &user, nil
+}
+
+// Device Token Methods
+func NewMySQLDeviceToken() domain.IDeviceToken {
+	conn := config.GetDBPool()
+	if conn.Err != "" {
+		log.Fatalf("Error al configurar el pool de conexiones: %v", conn.Err)
+	}
+	return &MySQLDeviceToken{conn: conn}
+}
+
+func (mysql *MySQLDeviceToken) SaveDeviceToken(userID int32, fcmToken string, deviceName string) error {
+	query := `INSERT INTO device_tokens (user_id, fcm_token, device_name) 
+		VALUES (?, ?, ?)
+		ON DUPLICATE KEY UPDATE user_id = ?, device_name = ?, updated_at = CURRENT_TIMESTAMP`
+	result, err := mysql.conn.ExecutePreparedQuery(query, userID, fcmToken, deviceName, userID, deviceName)
+	if err != nil {
+		return fmt.Errorf("error al guardar token de dispositivo: %v", err)
+	}
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected > 0 {
+		log.Printf("[MySQL] - Token de dispositivo guardado: UserID:%d Token:%s", userID, fcmToken)
+	}
+	return nil
+}
+
+func (mysql *MySQLDeviceToken) DeleteDeviceToken(userID int32, fcmToken string) error {
+	query := "DELETE FROM device_tokens WHERE user_id = ? AND fcm_token = ?"
+	result, err := mysql.conn.ExecutePreparedQuery(query, userID, fcmToken)
+	if err != nil {
+		return fmt.Errorf("error al eliminar token de dispositivo: %v", err)
+	}
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 1 {
+		log.Printf("[MySQL] - Token de dispositivo eliminado: UserID:%d", userID)
+	}
+	return nil
+}
+
+func (mysql *MySQLDeviceToken) GetDeviceTokensByUserID(userID int32) ([]domain.DeviceToken, error) {
+	query := "SELECT id, user_id, fcm_token, device_name, created_at, updated_at FROM device_tokens WHERE user_id = ?"
+	rows, err := mysql.conn.FetchRows(query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("error al ejecutar la consulta: %v", err)
+	}
+	defer rows.Close()
+
+	var tokens []domain.DeviceToken
+	for rows.Next() {
+		var token domain.DeviceToken
+		var deviceName, updatedAt sql.NullString
+		if err := rows.Scan(&token.ID, &token.UserID, &token.FCMToken, &deviceName, &token.CreatedAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("error al escanear la fila: %v", err)
+		}
+		if deviceName.Valid {
+			token.DeviceName = deviceName.String
+		}
+		if updatedAt.Valid {
+			token.UpdatedAt = updatedAt.String
+		}
+		tokens = append(tokens, token)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterando sobre las filas: %v", err)
+	}
+	return tokens, nil
+}
+
+func (mysql *MySQLDeviceToken) GetDeviceTokenByFCMToken(fcmToken string) (*domain.DeviceToken, error) {
+	query := "SELECT id, user_id, fcm_token, device_name, created_at, updated_at FROM device_tokens WHERE fcm_token = ?"
+	row, err := mysql.conn.FetchRow(query, fcmToken)
+	if err != nil {
+		return nil, fmt.Errorf("error al ejecutar la consulta: %v", err)
+	}
+
+	var token domain.DeviceToken
+	var deviceName, updatedAt sql.NullString
+	err = row.Scan(&token.ID, &token.UserID, &token.FCMToken, &deviceName, &token.CreatedAt, &updatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("token de dispositivo no encontrado")
+	}
+	if deviceName.Valid {
+		token.DeviceName = deviceName.String
+	}
+	if updatedAt.Valid {
+		token.UpdatedAt = updatedAt.String
+	}
+
+	return &token, nil
 }

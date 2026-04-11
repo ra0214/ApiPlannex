@@ -9,11 +9,12 @@ import (
 
 // InitRouter registra las rutas de users en un router existente
 func InitRouter(r *gin.Engine, repo domain.IUser) {
-	setupUserRoutes(r, repo)
+	deviceTokenRepo := NewMySQLDeviceToken()
+	setupUserRoutes(r, repo, deviceTokenRepo)
 }
 
 // setupUserRoutes registra todas las rutas de usuarios
-func setupUserRoutes(r *gin.Engine, repo domain.IUser) {
+func setupUserRoutes(r *gin.Engine, repo domain.IUser, deviceTokenRepo domain.IDeviceToken) {
 	// Mismo contenido que SetupRouter pero usando el router existente
 	createUser := application.NewCreateUser(repo)
 	createUserController := NewCreateUserController(createUser)
@@ -30,9 +31,19 @@ func setupUserRoutes(r *gin.Engine, repo domain.IUser) {
 	loginUser := application.NewLoginUser(repo)
 	loginUserController := NewLoginUserController(loginUser, repo)
 
+	saveDeviceTokenUseCase := application.NewSaveDeviceToken(deviceTokenRepo)
+	saveDeviceTokenController := NewSaveDeviceTokenController(saveDeviceTokenUseCase)
+
+	deleteDeviceTokenUseCase := application.NewDeleteDeviceToken(deviceTokenRepo)
+	deleteDeviceTokenController := NewDeleteDeviceTokenController(deleteDeviceTokenUseCase)
+
 	r.POST("/user", createUserController.Execute)
 	r.GET("/user", viewUserController.Execute)
 	r.PUT("/user/:id", editUserController.Execute)
 	r.DELETE("/user/:id", deleteUserController.Execute)
 	r.POST("/login", loginUserController.Execute)
+
+	// Device Token Routes
+	r.POST("/user/:userId/fcm-token", saveDeviceTokenController.Execute)
+	r.DELETE("/user/:userId/fcm-token", deleteDeviceTokenController.Execute)
 }

@@ -7,9 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRouter(repo domain.IUser) *gin.Engine {
-	r := gin.Default()
-
+func SetupRouter(repo domain.IUser, deviceTokenRepo domain.IDeviceToken, r *gin.Engine) {
 	createUser := application.NewCreateUser(repo)
 	createUserController := NewCreateUserController(createUser)
 
@@ -25,11 +23,19 @@ func SetupRouter(repo domain.IUser) *gin.Engine {
 	loginUser := application.NewLoginUser(repo)
 	loginUserController := NewLoginUserController(loginUser, repo)
 
+	saveDeviceTokenUseCase := application.NewSaveDeviceToken(deviceTokenRepo)
+	saveDeviceTokenController := NewSaveDeviceTokenController(saveDeviceTokenUseCase)
+
+	deleteDeviceTokenUseCase := application.NewDeleteDeviceToken(deviceTokenRepo)
+	deleteDeviceTokenController := NewDeleteDeviceTokenController(deleteDeviceTokenUseCase)
+
 	r.POST("/user", createUserController.Execute)
 	r.GET("/user", viewUserController.Execute)
 	r.PUT("/user/:id", editUserController.Execute)
 	r.DELETE("/user/:id", deleteUserController.Execute)
 	r.POST("/login", loginUserController.Execute)
 
-	return r
+	// Device Token Routes
+	r.POST("/user/:userId/fcm-token", saveDeviceTokenController.Execute)
+	r.DELETE("/user/:userId/fcm-token", deleteDeviceTokenController.Execute)
 }

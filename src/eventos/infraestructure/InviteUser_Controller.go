@@ -46,5 +46,11 @@ func (controller *InviteUserController) Execute(c *gin.Context) {
 		return
 	}
 
+	// Enviar notificación push al usuario invitado
+	evento, errGetEvento := controller.repo.GetEventoById(int32(eventoId))
+	if errGetEvento == nil && evento != nil {
+		NotifyUserInvited(body.UserID, evento.Title, int32(eventoId))
+	}
+
 	c.JSON(http.StatusCreated, gin.H{"message": "Usuario invitado correctamente"})
 }
