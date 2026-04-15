@@ -8,6 +8,7 @@ type IUser interface {
 	GetAll() ([]User, error)
 	GetUserByCredentials(userName string) (*User, error)
 	GetUserByID(id int32) (*User, error)
+	GetUserByToken(token string) (*User, error)
 }
 
 type IDeviceToken interface {

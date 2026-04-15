@@ -32,8 +32,9 @@ func main() {
 	r := gin.Default()
 
 	// Inicializar users y eventos pasando el mismo router
-	usersInfra.InitRouter(r, usersInfra.NewMySQL())
-	eventosInfra.Init(r)
+	userRepository := usersInfra.NewMySQL()
+	usersInfra.InitRouter(r, userRepository)
+	eventosInfra.Init(r, userRepository)
 
 	// Obtener puerto del .env o usar 8080 por defecto
 	port := os.Getenv("PORT")

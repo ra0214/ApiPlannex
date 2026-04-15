@@ -6,6 +6,7 @@ type IEventos interface {
 	ConfirmAttendance(eventoId int32, userId int32, status string) error
 	GetAllEventos() ([]Eventos, error)
 	GetEventoById(id int32) (*Eventos, error)
+	GetEventosByCreator(creatorId int32) ([]Eventos, error)
 	UpdateEvento(id int32, title, description, date string, latitude, longitude *float64, qrCodeData string) error
 	DeleteEvento(id int32) error
 }

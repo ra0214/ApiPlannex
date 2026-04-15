@@ -111,6 +111,46 @@ func (mysql *MySQL) GetAllEventos() ([]domain.Eventos, error) {
 	return eventos, nil
 }
 
+func (mysql *MySQL) GetEventosByCreator(creatorId int32) ([]domain.Eventos, error) {
+	query := `SELECT id, title, description, date, latitude, longitude, qr_code_data, last_updated, created_by FROM evento WHERE created_by = ? ORDER BY date DESC`
+	rows, err := mysql.conn.FetchRows(query, creatorId)
+	if err != nil {
+		return nil, fmt.Errorf("Error al ejecutar consulta: %v", err)
+	}
+	defer rows.Close()
+
+	var eventos []domain.Eventos
+	for rows.Next() {
+		var evento domain.Eventos
+		var lat, lng sql.NullFloat64
+		var qrCodeData, lastUpdated sql.NullString
+		var createdBy sql.NullInt32
+		if err := rows.Scan(&evento.ID, &evento.Title, &evento.Description, &evento.Date, &lat, &lng, &qrCodeData, &lastUpdated, &createdBy); err != nil {
+			return nil, fmt.Errorf("error scanning row: %w", err)
+		}
+		if lat.Valid {
+			evento.Latitude = &lat.Float64
+		}
+		if lng.Valid {
+			evento.Longitude = &lng.Float64
+		}
+		if qrCodeData.Valid {
+			evento.QRCodeData = qrCodeData.String
+		}
+		if lastUpdated.Valid {
+			evento.LastUpdated = lastUpdated.String
+		}
+		if createdBy.Valid {
+			evento.CreatedBy = &createdBy.Int32
+		}
+		eventos = append(eventos, evento)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating rows: %w", err)
+	}
+	return eventos, nil
+}
+
 func (mysql *MySQL) UpdateEvento(id int32, title, description, date string, latitude, longitude *float64, qrCodeData string) error {
 	query := `UPDATE evento SET title = ?, description = ?, date = ?, latitude = ?, longitude = ?, qr_code_data = ? WHERE id = ?`
 	_, err := mysql.conn.ExecutePreparedQuery(query, title, description, date, latitude, longitude, qrCodeData, id)

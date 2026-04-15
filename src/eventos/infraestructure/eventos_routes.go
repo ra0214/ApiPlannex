@@ -1,18 +1,23 @@
 package infraestructure
 
 import (
+	"Plannex/src/config/middleware"
 	"Plannex/src/eventos/application"
 	"Plannex/src/eventos/domain"
+	userDomain "Plannex/src/users/domain"
 
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRouter(repo domain.IEventos, r *gin.Engine) {
+func SetupRouter(repo domain.IEventos, r *gin.Engine, userRepo userDomain.IUser) {
 	createEventos := application.NewCreateEventos(repo)
 	createEventosController := NewCreateEventosController(createEventos, repo)
 
 	viewEventos := application.NewViewEventos(repo)
 	viewEventosController := NewViewEventosController(viewEventos)
+
+	viewMyEventos := application.NewViewMyEventos(repo)
+	viewMyEventosController := NewViewMyEventosController(viewMyEventos)
 
 	editEventosUseCase := application.NewEditEventos(repo)
 	editEventosController := NewEditEventosController(editEventosUseCase, repo)
@@ -29,8 +34,9 @@ func SetupRouter(repo domain.IEventos, r *gin.Engine) {
 	// WebSocket debe ir antes de /eventos/:id para que "ws" no se interprete como id
 	r.GET("/eventos/ws", gin.WrapF(HandleWebSocket(GetHub())))
 
-	r.POST("/eventos", createEventosController.Execute)
+	r.POST("/eventos", middleware.AuthMiddleware(userRepo), createEventosController.Execute)
 	r.GET("/eventos", viewEventosController.Execute)
+	r.GET("/eventos/mios", middleware.AuthMiddleware(userRepo), viewMyEventosController.Execute)
 	r.PUT("/eventos/:id", editEventosController.Execute)
 	r.DELETE("/eventos/:id", deleteEventosController.Execute)
 	r.GET("/eventos/:id", getEventosByIdController.Execute)

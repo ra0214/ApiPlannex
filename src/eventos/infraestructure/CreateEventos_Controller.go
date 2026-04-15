@@ -24,7 +24,6 @@ type RequestBody struct {
 	Latitude    *float64 `json:"latitude,omitempty"`
 	Longitude   *float64 `json:"longitude,omitempty"`
 	QRCodeData  string   `json:"qr_code_data,omitempty"`
-	CreatedBy   *int32   `json:"created_by,omitempty"`
 }
 
 func (cp_c *CreateEventosController) Execute(c *gin.Context) {
@@ -34,7 +33,15 @@ func (cp_c *CreateEventosController) Execute(c *gin.Context) {
 		return
 	}
 
-	id, err := cp_c.useCase.Execute(body.Title, body.Description, body.Date, body.Latitude, body.Longitude, body.QRCodeData, body.CreatedBy)
+	// Si el usuario está autenticado, obtener su ID del contexto
+	var createdBy *int32
+	if userID, exists := c.Get("userID"); exists {
+		if userIDInt32, ok := userID.(int32); ok {
+			createdBy = &userIDInt32
+		}
+	}
+
+	id, err := cp_c.useCase.Execute(body.Title, body.Description, body.Date, body.Latitude, body.Longitude, body.QRCodeData, createdBy)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al crear el evento", "detalles": err.Error()})
 		return

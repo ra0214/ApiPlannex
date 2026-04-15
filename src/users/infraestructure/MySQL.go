@@ -158,6 +158,29 @@ func (mysql *MySQL) GetUserByID(id int32) (*domain.User, error) {
 	return &user, nil
 }
 
+func (mysql *MySQL) GetUserByToken(token string) (*domain.User, error) {
+	query := "SELECT id, user_name, email, password, auth_token, role, profile_image_path FROM users WHERE auth_token = ?"
+	row, err := mysql.conn.FetchRow(query, token)
+	if err != nil {
+		return nil, fmt.Errorf("error al ejecutar la consulta: %v", err)
+	}
+
+	var user domain.User
+	var authToken, profilePath sql.NullString
+	err = row.Scan(&user.ID, &user.UserName, &user.Email, &user.Password, &authToken, &user.Role, &profilePath)
+	if err != nil {
+		return nil, fmt.Errorf("usuario no encontrado con ese token")
+	}
+	if authToken.Valid {
+		user.AuthToken = authToken.String
+	}
+	if profilePath.Valid {
+		user.ProfileImagePath = profilePath.String
+	}
+
+	return &user, nil
+}
+
 // Device Token Methods
 func NewMySQLDeviceToken() domain.IDeviceToken {
 	conn := config.GetDBPool()
